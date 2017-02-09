@@ -4,8 +4,6 @@
 
 from __future__ import division
 
-import sys
-
 import cv2
 import numpy as np
 import rospy
