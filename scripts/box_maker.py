@@ -9,6 +9,7 @@ import numpy as np
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+import time
 
 class BoxMaker(object):
     """
@@ -25,6 +26,8 @@ class BoxMaker(object):
         # Object ID in YOLO data
         self.object_id = 21
         self.object_name = 'block'
+        self.last_time = time.time()
+        self.delay_between_images = 5
 
 
     def _parse_image(self, image_msg):
@@ -33,7 +36,8 @@ class BoxMaker(object):
         :param image_msg: Image data
         :return: None
         """
-
+        if (time.time() - self.last_time) < self.delay_between_images:
+            return
         header = image_msg.header
 
         try:
@@ -101,12 +105,12 @@ class BoxMaker(object):
         np.savetxt(outfile, data, fmt="%i %.8f %.8f %.8f %.8f", newline=' ')
         outfile.close()
         self.image_count+=1
-        rospy.sleep(5.)
+        self.last_time = time.time()
         # cv2.rectangle(image_resize, (int(left*len(image_resize[0])), int(top*len(image_resize))),
         #               (int((left+width)*len(image_resize[0])), int((top+height)*len(image_resize))), (0, 255, 0), thickness=2)
 
     def run(self):
-        rospy.Subscriber(self.image_sub_topic_name, Image, self._parse_image) # subscribe to sub_image_topic and callback parse
+        rospy.Subscriber(self.image_sub_topic_name, Image, self._parse_image, queue_size=2) # subscribe to sub_image_topic and callback parse
         rospy.spin()
 
 if __name__ == '__main__':
