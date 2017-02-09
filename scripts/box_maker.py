@@ -101,6 +101,7 @@ class BoxMaker(object):
         np.savetxt(outfile, data, fmt="%i %.8f %.8f %.8f %.8f", newline=' ')
         outfile.close()
         self.image_count+=1
+        rospy.sleep(5.)
         # cv2.rectangle(image_resize, (int(left*len(image_resize[0])), int(top*len(image_resize))),
         #               (int((left+width)*len(image_resize[0])), int((top+height)*len(image_resize))), (0, 255, 0), thickness=2)
 
