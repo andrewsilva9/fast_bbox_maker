@@ -1,8 +1,8 @@
 <package>
-  <name>rail_face_detector</name>
+  <name>fast_bbox_maker</name>
   <version>0.0.1</version>
   <description>
-    This package provides face detection.
+    This package provides quick bounding boxes for objects on noise-free backgrounds.
   </description>
   <maintainer email="asilva9@gatech.edu">Andrew Silva</maintainer>
   <url type="website">https://github.gatech.edu/asilva9/ros_faces</url>
