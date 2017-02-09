@@ -12,15 +12,21 @@ import rospy
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 
-class CameraSaver(object):
+class BoxMaker(object):
     """
-    This class takes in image data and finds / annotates faces within the image
+    This class takes in image data and finds / annotates boxes
     """
 
     def __init__(self):
         rospy.init_node('box_maker')
         self.bridge = CvBridge()
         self.image_sub_topic_name = rospy.get_param('~image_sub_topic_name', default='/kinect2/qhd/image_color')
+        self.image_count = 0
+        # Amount to scale bounding box left up down and right
+        self.scaler = 3
+        # Object ID in YOLO data
+        self.object_id = 21
+        self.object_name = 'block'
 
 
     def _parse_image(self, image_msg):
@@ -38,17 +44,23 @@ class CameraSaver(object):
             print e
             return
 
-        # Object ID in yolo data
-        object_id = 21
-        # number of pixels to scale bounding box by (left, up, down, and right)
-        scaler = 3
 
         # Read in image, resize, blur, binarize / threshold, erode, dilate
+        # cv2.imshow('unscaled', image_cv)
+        # cv2.waitKey(0)
         image_resize = cv2.resize(image_cv, dsize=(960, 540))
+        # cv2.imshow('scaled', image_resize)
+        # cv2.waitKey(0)
         image_blur = cv2.GaussianBlur(image_resize, ksize=(7, 7), sigmaX=3)
+        # cv2.imshow('blurred', image_blur)
+        # cv2.waitKey(0)
         ret, thresh = cv2.threshold(image_blur, 127, 255, cv2.THRESH_BINARY)
+        # cv2.imshow('binary', thresh)
+        # cv2.waitKey(0)
         kernel = np.ones((5, 5), np.uint8)
         opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        # cv2.imshow('open', opened)
+        # cv2.waitKey(0)
 
         # Find lowest left corner, lowest top, highest right, and keep making a detected edge the bottom
         left = len(opened[0])
@@ -68,22 +80,31 @@ class CameraSaver(object):
                 right = ones[len(ones) - 1]
             bottom = index
 
-        left -= scaler
-        top -= scaler
-        bottom += scaler
-        right += scaler
+        left -= self.scaler
+        top -= self.scaler
+        bottom += self.scaler
+        right += self.scaler
+        # Avoid going out of bounds
+        left = max(0, left)
+        top = max(0, top)
+        bottom = min(bottom, len(image_resize))
+        right = min(bottom, len(image_resize[0]))
         left /= float(len(image_resize[0]))
         top /= float(len(image_resize))
         bottom /= float(len(image_resize))
         right /= float(len(image_resize[0]))
         width = right - left
         height = bottom - top
-        data = np.array([[object_id, left, top, width, height]]).astype(float)
-        np.savetxt('test.txt', data, fmt="%i %.8f %.8f %.8f %.8f", newline=' ')
+        data = np.array([[self.object_id, left, top, width, height]]).astype(float)
+        image_file_path = '/home/andrewsilva/ws/src/fast_bbox_maker/JPEGImages/'+self.object_name+'{:05d}'.format(self.image_count)+'.jpg'
+        text_file_path = '/home/andrewsilva/ws/src/fast_bbox_maker/labels/'+self.object_name+'{:05d}'.format(self.image_count)+'.txt'
+        cv2.imwrite(image_file_path, image_resize)
+        outfile = open(text_file_path, 'w')
+        np.savetxt(outfile, data, fmt="%i %.8f %.8f %.8f %.8f", newline=' ')
+        outfile.close()
+        self.image_count+=1
         # cv2.rectangle(image_resize, (int(left*len(image_resize[0])), int(top*len(image_resize))),
         #               (int((left+width)*len(image_resize[0])), int((top+height)*len(image_resize))), (0, 255, 0), thickness=2)
-        # cv2.imshow("test", image_resize)
-        # cv2.waitKey(0)
 
     def run(self):
         rospy.Subscriber(self.image_sub_topic_name, Image, self._parse_image) # subscribe to sub_image_topic and callback parse
@@ -91,7 +112,7 @@ class CameraSaver(object):
 
 if __name__ == '__main__':
     try:
-        saver = CameraSaver()
+        saver = BoxMaker()
         saver.run()
     except rospy.ROSInterruptException:
         pass
