@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # This file is responsible for running a node that saves incoming images in a directory named "JPEGImages" and their
 # boxes in a directory named "labels"
+###### WARNINGS:
+###### Directories must be changed to reflect your own machine (mine are absolute paths and hard coded)
+###### And the image_count is set to whatever the last one I used. You probably want to set it to 0.
 
 from __future__ import division
 
@@ -14,13 +17,14 @@ import time
 class BoxMaker(object):
     """
     This class takes in image data and finds / annotates boxes
+    See warnings above to fix two issues
     """
 
     def __init__(self):
         rospy.init_node('box_maker')
         self.bridge = CvBridge()
         self.image_sub_topic_name = rospy.get_param('~image_sub_topic_name', default='/kinect2/qhd/image_color')
-        self.image_count = 0
+        self.image_count = 38
         # Amount to scale bounding box left up down and right
         self.scaler = 3
         # Object ID in YOLO data
@@ -53,6 +57,7 @@ class BoxMaker(object):
         image_resize = cv2.resize(image_cv, dsize=(960, 540))
         # cv2.imshow('scaled', image_resize)
         # cv2.waitKey(0)
+        image_resize = image_resize[100:400, 300:700]
         image_blur = cv2.GaussianBlur(image_resize, ksize=(7, 7), sigmaX=3)
         # cv2.imshow('blurred', image_blur)
         # cv2.waitKey(0)
@@ -86,11 +91,14 @@ class BoxMaker(object):
         top -= self.scaler
         bottom += self.scaler
         right += self.scaler
+        # cv2.rectangle(opened, (left, top), (right, bottom), color=(0, 255, 0), thickness=2)
+        # cv2.imshow('rect', opened)
+        # cv2.waitKey(0)
         # Avoid going out of bounds
         left = max(0, left)
         top = max(0, top)
         bottom = min(bottom, len(image_resize))
-        right = min(bottom, len(image_resize[0]))
+        right = min(right, len(image_resize[100]))
         left /= float(len(image_resize[0]))
         top /= float(len(image_resize))
         bottom /= float(len(image_resize))
@@ -98,16 +106,21 @@ class BoxMaker(object):
         width = right - left
         height = bottom - top
         data = np.array([[self.object_id, left, top, width, height]]).astype(float)
-        image_file_path = '/home/andrewsilva/ws/src/fast_bbox_maker/JPEGImages/'+self.object_name+'{:05d}'.format(self.image_count)+'.jpg'
-        text_file_path = '/home/andrewsilva/ws/src/fast_bbox_maker/labels/'+self.object_name+'{:05d}'.format(self.image_count)+'.txt'
+        image_file_path = '/home/asilva/ws/src/fast_bbox_maker/JPEGImages/'+self.object_name+'{:05d}'.format(self.image_count)+'.jpg'
+        text_file_path = '/home/asilva/ws/src/fast_bbox_maker/labels/'+self.object_name+'{:05d}'.format(self.image_count)+'.txt'
+        debug_image_file_path = '/home/asilva/ws/src/fast_bbox_maker/debugImages/'+self.object_name+'{:05d}'.format(self.image_count)+'.jpg'
         cv2.imwrite(image_file_path, image_resize)
         outfile = open(text_file_path, 'w')
         np.savetxt(outfile, data, fmt="%i %.8f %.8f %.8f %.8f", newline=' ')
         outfile.close()
         self.image_count+=1
         self.last_time = time.time()
-        # cv2.rectangle(image_resize, (int(left*len(image_resize[0])), int(top*len(image_resize))),
-        #               (int((left+width)*len(image_resize[0])), int((top+height)*len(image_resize))), (0, 255, 0), thickness=2)
+        cv2.rectangle(image_resize, (int(left*len(image_resize[0])), int(top*len(image_resize))),
+                      (int((left+width)*len(image_resize[0])), int((top+height)*len(image_resize))), (0, 255, 0), thickness=2)
+        # cv2.imshow('rect', image_resize)
+        # cv2.waitKey(0)
+        cv2.imwrite(debug_image_file_path, image_resize)
+
 
     def run(self):
         rospy.Subscriber(self.image_sub_topic_name, Image, self._parse_image, queue_size=2) # subscribe to sub_image_topic and callback parse
