@@ -4,7 +4,7 @@
 ###### WARNINGS:
 ###### Directories must be changed to reflect your own machine (mine are absolute paths and hard coded)
 ###### And the image_count is set to whatever the last one I used. You probably want to set it to 0.
-
+###### Be sure to set the right object name and ID# so you don't overwrite stuff
 from __future__ import division
 
 import cv2
@@ -24,12 +24,12 @@ class BoxMaker(object):
         rospy.init_node('box_maker')
         self.bridge = CvBridge()
         self.image_sub_topic_name = rospy.get_param('~image_sub_topic_name', default='/kinect2/qhd/image_color')
-        self.image_count = 38
+        self.image_count = 0
         # Amount to scale bounding box left up down and right
         self.scaler = 3
         # Object ID in YOLO data
-        self.object_id = 21
-        self.object_name = 'block'
+        self.object_id = 000
+        self.object_name = 'blank'
         self.last_time = time.time()
         self.delay_between_images = 5
 
